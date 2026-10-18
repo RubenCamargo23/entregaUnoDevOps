@@ -1,0 +1,144 @@
+name: 🧨 Eliminar infraestructura AWS
+
+# Elimina todos los recursos de la Entrega 1 para empezar desde cero.
+# Se ejecuta solo a mano: Actions → "🧨 Eliminar infraestructura AWS" → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacion:
+        description: 'Escriba ELIMINAR para confirmar (se borran Beanstalk, RDS con sus datos y security groups)'
+        required: true
+        type: string
+      eliminar_roles_iam:
+        description: 'Eliminar también los roles IAM de Elastic Beanstalk'
+        type: boolean
+        default: false
+      eliminar_bucket_s3:
+        description: 'Eliminar también el bucket S3 de versiones de Elastic Beanstalk'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-infraestructura
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  EB_APP: blacklist-app
+  EB_ENV: blacklist-env
+  RDS_ID: blacklist-db
+  APP_SG: blacklist-app-sg
+  DB_SG: blacklist-db-sg
+
+jobs:
+  eliminar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Validar confirmación
+        if: inputs.confirmacion != 'ELIMINAR'
+        run: |
+          echo "::error::Confirmación inválida. Escriba ELIMINAR para ejecutar el workflow."
+          exit 1
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Cuenta de AWS
+        run: aws sts get-caller-identity --query '[Account,Arn]' --output text
+
+      - name: 1. Terminar ambiente y aplicación de Elastic Beanstalk
+        run: |
+          STATUS=$(aws elasticbeanstalk describe-environments --environment-names "$EB_ENV" --no-include-deleted \
+                   --query 'Environments[0].Status' --output text 2>/dev/null || echo None)
+          if [ "$STATUS" != "None" ] && [ "$STATUS" != "Terminated" ]; then
+            echo "Terminando ambiente $EB_ENV (estado: $STATUS)..."
+            aws elasticbeanstalk terminate-environment --environment-name "$EB_ENV" >/dev/null
+            aws elasticbeanstalk wait environment-terminated --environment-names "$EB_ENV"
+            echo "Ambiente terminado."
+          else
+            echo "El ambiente $EB_ENV no existe."
+          fi
+          if aws elasticbeanstalk describe-applications --application-names "$EB_APP" \
+               --query 'Applications[0].ApplicationName' --output text | grep -q "$EB_APP"; then
+            aws elasticbeanstalk delete-application --application-name "$EB_APP" --terminate-env-by-force
+            echo "Aplicación $EB_APP eliminada (incluye sus versiones)."
+          else
+            echo "La aplicación $EB_APP no existe."
+          fi
+
+      - name: 2. Eliminar base de datos RDS
+        run: |
+          if aws rds describe-db-instances --db-instance-identifier "$RDS_ID" >/dev/null 2>&1; then
+            echo "Eliminando $RDS_ID (sin snapshot final)..."
+            aws rds delete-db-instance --db-instance-identifier "$RDS_ID" \
+              --skip-final-snapshot --delete-automated-backups >/dev/null
+            aws rds wait db-instance-deleted --db-instance-identifier "$RDS_ID"
+            echo "Base de datos eliminada."
+          else
+            echo "La base de datos $RDS_ID no existe."
+          fi
+
+      - name: 3. Eliminar security groups
+        run: |
+          # Primero el de RDS, porque su regla de entrada referencia al de la aplicación.
+          for SG in "$DB_SG" "$APP_SG"; do
+            ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values="$SG" \
+                 --query 'SecurityGroups[0].GroupId' --output text)
+            if [ "$ID" != "None" ]; then
+              for i in 1 2 3 4 5 6; do
+                aws ec2 delete-security-group --group-id "$ID" && { echo "$SG ($ID) eliminado."; break; }
+                echo "Aún en uso, reintentando en 30 s..."; sleep 30
+              done
+            else
+              echo "$SG no existe."
+            fi
+          done
+
+      - name: 4. Eliminar roles IAM de Elastic Beanstalk (opcional)
+        if: inputs.eliminar_roles_iam
+        run: |
+          for ROLE in aws-elasticbeanstalk-ec2-role aws-elasticbeanstalk-service-role; do
+            aws iam get-role --role-name "$ROLE" >/dev/null 2>&1 || { echo "$ROLE no existe."; continue; }
+            for ARN in $(aws iam list-attached-role-policies --role-name "$ROLE" --query 'AttachedPolicies[].PolicyArn' --output text); do
+              aws iam detach-role-policy --role-name "$ROLE" --policy-arn "$ARN"
+            done
+            for P in $(aws iam list-instance-profiles-for-role --role-name "$ROLE" --query 'InstanceProfiles[].InstanceProfileName' --output text); do
+              aws iam remove-role-from-instance-profile --instance-profile-name "$P" --role-name "$ROLE"
+              aws iam delete-instance-profile --instance-profile-name "$P"
+            done
+            aws iam delete-role --role-name "$ROLE"
+            echo "$ROLE eliminado."
+          done
+
+      - name: 5. Eliminar bucket S3 de Elastic Beanstalk (opcional)
+        if: inputs.eliminar_bucket_s3
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET="elasticbeanstalk-${AWS_REGION}-${ACCOUNT}"
+          if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            aws s3api delete-bucket-policy --bucket "$BUCKET" || true
+            aws s3 rb "s3://$BUCKET" --force
+            echo "Bucket $BUCKET eliminado."
+          else
+            echo "El bucket $BUCKET no existe."
+          fi
+
+      - name: Verificación final
+        if: always()
+        run: |
+          {
+            echo "## Recursos restantes en $AWS_REGION"
+            echo '```'
+            echo "Beanstalk : $(aws elasticbeanstalk describe-environments --application-name "$EB_APP" --no-include-deleted --query 'length(Environments)' --output text 2>/dev/null || echo 0) ambientes"
+            echo "RDS       : $(aws rds describe-db-instances --query "length(DBInstances[?DBInstanceIdentifier=='$RDS_ID'])" --output text)"
+            echo "SGs       : $(aws ec2 describe-security-groups --filters Name=group-name,Values=$APP_SG,$DB_SG --query 'length(SecurityGroups)' --output text)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
