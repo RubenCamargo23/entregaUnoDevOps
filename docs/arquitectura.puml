@@ -1,0 +1,104 @@
+@startuml arquitectura
+' Diagrama de arquitectura - Blacklist Microservice (Proyecto 1 - Entrega 1)
+' Render: java -jar plantuml.jar docs/arquitectura.puml   (sin Graphviz se usa el layout smetana)
+!pragma layout smetana
+
+!include <awslib14/AWSCommon>
+!include <awslib14/General/Users>
+!include <awslib14/General/Client>
+!include <awslib14/Groups/AWSCloud>
+!include <awslib14/Groups/Region>
+!include <awslib14/Groups/VPC>
+!include <awslib14/Groups/AvailabilityZone>
+!include <awslib14/Groups/AutoScalingGroup>
+!include <awslib14/Groups/SecurityGroup>
+!include <awslib14/Groups/ElasticBeanstalkContainer>
+!include <awslib14/Compute/ElasticBeanstalk>
+!include <awslib14/Compute/EC2Instance>
+!include <awslib14/NetworkingContentDelivery/ElasticLoadBalancingApplicationLoadBalancer>
+!include <awslib14/Database/RDS>
+!include <awslib14/Storage/SimpleStorageServiceBucket>
+
+skinparam defaultFontName "Segoe UI"
+skinparam shadowing false
+skinparam ArrowColor #232F3E
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #C9B458
+skinparam noteTextAlignment left
+skinparam wrapWidth 420
+
+title Blacklist Microservice – Arquitectura de despliegue en AWS (Entrega 1)
+
+left to right direction
+
+' ----------------------------------------------------------------- Actores externos
+Users(dev, "Equipo de desarrollo", "despliegue manual", "build_bundle.sh → zip con VERSION\ngenerate_token.py → Bearer JWT")
+Client(cli, "Cliente REST", "Postman / newman / curl", "Authorization: Bearer <JWT>")
+Client(mon, "watch_deploy.sh", "monitor", "GET /health cada 1 s\n(código HTTP + versión)")
+
+' ----------------------------------------------------------------- AWS
+AWSCloudGroup(aws) {
+  RegionGroup(region, "us-east-2 (Ohio)") {
+
+    ElasticBeanstalk(eb, "Elastic Beanstalk", "blacklist-app / blacklist-env", "AL2023 · Python 3.12\nPolítica de implementación configurable")
+    SimpleStorageServiceBucket(s3, "elasticbeanstalk-us-east-2-*", "S3", "Versiones de la aplicación (zip)")
+
+    VPCGroup(vpc, "VPC por defecto") {
+
+      ElasticBeanstalkContainerGroup(env, "Ambiente blacklist-env (LoadBalanced)") {
+
+        ElasticLoadBalancingApplicationLoadBalancer(alb, "Application Load Balancer", "HTTP :80", "Health check GET /health\nintervalo 15 s · umbral sano 3 · 200")
+
+        SecurityGroupGroup(sgapp, "blacklist-app-sg") {
+          AutoScalingGroupGroup(asg, "Auto Scaling Group  (mín 3 / máx 6)") {
+            ' Declaradas en orden inverso para que, con left to right direction, us-east-2a quede arriba
+            AvailabilityZoneGroup(azc, "us-east-2c") {
+              EC2Instance(ec2c, "EC2 t3.micro", "instancia 3", "")
+            }
+            AvailabilityZoneGroup(azb, "us-east-2b") {
+              EC2Instance(ec2b, "EC2 t3.micro", "instancia 2", "")
+            }
+            AvailabilityZoneGroup(aza, "us-east-2a") {
+              EC2Instance(ec2a, "EC2 t3.micro", "instancia 1", "")
+            }
+          }
+        }
+      }
+
+      SecurityGroupGroup(sgdb, "blacklist-db-sg  (entrada 5432 solo desde blacklist-app-sg)") {
+        RDS(rds, "RDS blacklist-db", "PostgreSQL 18.3 · db.t3.micro", "Single-AZ · acceso público: No\nBD blacklist · tabla blacklist")
+      }
+    }
+  }
+}
+
+note as ninst
+  **Pila de software en cada instancia EC2**
+  nginx :80 → Gunicorn :8000 (3 workers) → Flask ""application:application""
+  Flask-RESTful · Flask-JWT-Extended · Flask-Marshmallow · Flask-SQLAlchemy (psycopg2)
+  ----
+  ""GET  /health""                 sin token → {status, version}
+  ""POST /blacklists""             Bearer → 201 / 400 / 401 / 409
+  ""GET  /blacklists/<email>""     Bearer → is_blacklisted
+  ----
+  Propiedades del entorno: RDS_HOSTNAME, RDS_PORT, RDS_DB_NAME,
+  RDS_USERNAME, RDS_PASSWORD, JWT_SECRET_KEY
+end note
+
+' ----------------------------------------------------------------- Flujos
+dev --> eb : (1) Cargar e implementar\nblacklist-<versión>.zip
+eb --> s3 : (2) guarda la versión
+eb --> asg : (3) despliega según la política\n(All at once / Rolling / Rolling + batch / Immutable)
+
+cli --> alb : HTTP :80\n/blacklists, /health
+mon --> alb : GET /health
+
+alb --> ec2a : HTTP :80
+alb --> ec2b : HTTP :80
+alb --> ec2c : HTTP :80
+
+ec2a --> rds : TCP 5432
+ec2b --> rds : TCP 5432
+ec2c --> rds : TCP 5432
+
+@enduml
