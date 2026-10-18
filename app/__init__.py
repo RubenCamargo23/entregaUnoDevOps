@@ -7,7 +7,6 @@ from flask_restful import Api
 from app.config import Config
 from app.models import db, ma
 
-
 def _read_version():
     # build_bundle.sh escribe el archivo VERSION dentro del paquete que se sube a Beanstalk
     path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "VERSION")
@@ -30,10 +29,11 @@ def create_app(config_object=Config):
     jwt = JWTManager(app)
     _register_jwt_errors(jwt)
 
-    from app.resources import BlacklistCheckResource, HealthResource
+    from app.resources import BlacklistCheckResource, BlacklistResource, HealthResource
 
     api = Api(app)
     api.add_resource(HealthResource, "/", "/health")
+    api.add_resource(BlacklistResource, "/blacklists")
     api.add_resource(BlacklistCheckResource, "/blacklists/<string:email>")
 
     with app.app_context():
