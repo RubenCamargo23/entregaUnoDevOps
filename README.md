@@ -4,6 +4,15 @@ Microservicio REST para gestionar la **lista negra global de emails** de la orga
 
 Universidad de los Andes · DevOps: Agilizando el Despliegue Continuo de Aplicaciones · Proyecto – Entrega 1
 
+## Integrantes
+
+| Integrante | GitHub | Responsabilidad |
+|---|---|---|
+| David Rojas | [@DRJ244](https://github.com/DRJ244) | Endpoint `POST /blacklists` (`ft_post_blacklist`) |
+| Ruben Camargo | [@RubenCamargo23](https://github.com/RubenCamargo23) | Endpoint `GET /blacklists/<email>` y Postman (`ft_get_blacklist`) |
+| Diego Rojas | [@diegorojasd](https://github.com/diegorojasd) | Infraestructura AWS: RDS y Elastic Beanstalk (`ft_infra_aws`) |
+| Brian Martínez | [@martzb](https://github.com/martzb) | Estrategias de despliegue (`ft_estrategias_despliegue`) |
+
 | Recurso | Enlace |
 |---|---|
 | Ambiente en AWS | http://blacklist-devops-e1.us-east-2.elasticbeanstalk.com |
