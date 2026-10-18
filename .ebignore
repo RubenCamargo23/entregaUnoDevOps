@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+.env
+.git/
+.elasticbeanstalk/
+dist/
+docs/
+postman/
+tests/
+scripts/

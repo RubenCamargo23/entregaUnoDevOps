@@ -11,3 +11,6 @@ dist/
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
+
+# Generado por scripts/build_bundle.sh
+VERSION
