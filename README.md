@@ -22,3 +22,16 @@ Universidad de los Andes · DevOps: Agilizando el Despliegue Continuo de Aplicac
 3. Cuando todo está integrado y probado en AWS: **PR `develop → main`** para la entrega.
 
 Las tareas están en la pestaña **Issues** (milestone *Entrega 1*).
+
+## Despliegue en Elastic Beanstalk
+
+```bash
+./scripts/build_bundle.sh 1.0.0   # -> dist/blacklist-1.0.0.zip (incluye el archivo VERSION)
+```
+
+Suba el zip en la consola (*Cargar e implementar*). El paquete incluye:
+
+- `Procfile`: `gunicorn ... application:application` en el puerto 8000.
+- `.ebextensions/01_environment.config`: Application Load Balancer, Auto Scaling mín 3 / máx 6, health check en `/health` y reporte de salud mejorado.
+
+Compruebe el despliegue con `curl http://<ambiente>.elasticbeanstalk.com/health`, que responde `{"status": "ok", "version": "1.0.0"}`. `.ebignore` excluye pruebas, Postman, docs y scripts cuando se despliega con `eb deploy`.
