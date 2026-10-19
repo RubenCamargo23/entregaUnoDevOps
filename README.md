@@ -182,6 +182,5 @@ Al terminar, eliminar los recursos para no generar costos: en GitHub, *Actions �
 | `ft_get_blacklist` | Integrante 2 – Endpoint `GET /blacklists/<email>` + Postman |
 | `ft_infra_aws` | Integrante 3 – RDS + Elastic Beanstalk + health checks |
 | `ft_estrategias_despliegue` | Integrante 4 – Estrategias de despliegue |
-| `guia` | Implementación de referencia (solo consulta) |
 
 Cada integrante trabaja en su rama `ft_*` y abre un Pull Request hacia `develop`. Cuando todo está integrado y probado en AWS, se hace el PR `develop → main`. Las tareas están en la pestaña **Issues** (milestone *Entrega 1*) y en el tablero Kanban.
