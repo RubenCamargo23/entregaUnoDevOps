@@ -14,3 +14,14 @@ dist/
 
 # Generado por scripts/build_bundle.sh
 VERSION
+
+# Reportes de pruebas y artefactos generados en CI
+reports/
+build/
+.coverage
+coverage.xml
+
+# Material del curso y mediciones locales (no se versionan)
+notas.md
+Entrega*.pdf
+mediciones/
