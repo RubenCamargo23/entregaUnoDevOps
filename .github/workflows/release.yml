@@ -1,0 +1,99 @@
+name: 🏷️ Crear release
+
+# Crea un tag anotado y un release de GitHub sobre el último commit de main.
+# Adjunta el artefacto que generó el pipeline de CI (AWS CodeBuild) para ese mismo commit.
+# Se ejecuta solo a mano: Actions → "🏷️ Crear release" → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión del release (tag anotado), p. ej. v2.0.0'
+        required: true
+        type: string
+      titulo:
+        description: 'Título del release'
+        required: true
+        type: string
+      notas:
+        description: 'Archivo de notas del release dentro del repositorio'
+        required: true
+        type: string
+        default: 'docs/releases/v2.0.0.md'
+      adjuntar_artefacto_ci:
+        description: 'Adjuntar el artefacto generado por AWS CodeBuild para este commit'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  AWS_REGION: us-east-2
+  CODEBUILD_PROJECT: blacklist-ci
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el código de main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validar versión y notas
+        run: |
+          [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::La versión debe tener el formato vX.Y.Z"; exit 1; }
+          if git rev-parse -q --verify "refs/tags/${{ inputs.version }}" >/dev/null; then
+            echo "::error::El tag ${{ inputs.version }} ya existe"; exit 1
+          fi
+          [ -f "${{ inputs.notas }}" ] || { echo "::error::No existe el archivo de notas ${{ inputs.notas }}"; exit 1; }
+          echo "SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Configurar credenciales de AWS
+        if: inputs.adjuntar_artefacto_ci
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Descargar el artefacto de CI de este commit
+        if: inputs.adjuntar_artefacto_ci
+        run: |
+          # Espera hasta 10 minutos a que exista un build exitoso de CodeBuild para el commit de main.
+          for i in $(seq 1 40); do
+            IDS=$(aws codebuild list-builds-for-project --project-name "$CODEBUILD_PROJECT" --query 'ids[0:50]' --output text)
+            BUILD=$(aws codebuild batch-get-builds --ids $IDS \
+              --query "builds[?resolvedSourceVersion=='$SHA' && buildStatus=='SUCCEEDED'] | [0].[buildNumber, artifacts.location]" --output text)
+            if [ -n "$BUILD" ] && [ "$BUILD" != "None" ]; then break; fi
+            echo "Esperando el build exitoso de $SHA ($i/40)..."; sleep 15
+          done
+          [ -n "$BUILD" ] && [ "$BUILD" != "None" ] || { echo "::error::No hay un build exitoso de CodeBuild para $SHA"; exit 1; }
+          NUM=$(echo "$BUILD" | cut -f1)
+          LOC=$(echo "$BUILD" | cut -f2 | sed 's#^arn:aws:s3:::#s3://#')
+          aws s3 cp "$LOC" "blacklist-2.0.${NUM}.zip" --only-show-errors
+          echo "ARTEFACTO=blacklist-2.0.${NUM}.zip" >> "$GITHUB_ENV"
+          unzip -l "blacklist-2.0.${NUM}.zip"
+
+      - name: Crear tag anotado
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ inputs.version }}" -m "${{ inputs.titulo }}" "$SHA"
+          git push origin "${{ inputs.version }}"
+
+      - name: Crear release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.version }}" ${ARTEFACTO:+"$ARTEFACTO"} \
+            --verify-tag --latest \
+            --title "${{ inputs.titulo }}" \
+            --notes-file "${{ inputs.notas }}"
+          {
+            echo "## Release ${{ inputs.version }} creado"
+            echo "- Commit: \`$SHA\`"
+            echo "- Artefacto de CI: ${ARTEFACTO:-no adjuntado}"
+          } >> "$GITHUB_STEP_SUMMARY"
