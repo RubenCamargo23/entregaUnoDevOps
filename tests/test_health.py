@@ -5,7 +5,7 @@ import pytest
 def test_health_responds_ok(client, path):
     res = client.get(path)
     assert res.status_code == 200
-    assert res.get_json()["status"] == "fallo-intencional"
+    assert res.get_json()["status"] == "ok"
 
 
 def test_health_reports_version(client):
