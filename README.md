@@ -151,6 +151,8 @@ npx newman run postman/blacklist.postman_collection.json
 
 ## Despliegue manual en AWS
 
+> **Entrega 2:** la infraestructura se volvió a crear con el ambiente `blacklist-env` (v2.0.0) y la base de datos `blacklist-db`. La configuración, cómo verificarla y la evidencia están en [`docs/infraestructura-rds-beanstalk.md`](docs/infraestructura-rds-beanstalk.md).
+
 ### 1. RDS (PostgreSQL)
 - PostgreSQL, plantilla capa gratuita, `db.t3.micro`, 20 GB, sin acceso público, base de datos inicial `blacklist`.
 - Security Group `blacklist-db-sg`: entrada **5432** solo desde el Security Group de las instancias de Beanstalk.
@@ -185,7 +187,7 @@ Resultados medidos (3 instancias, lote fijo de 1 en las estrategias por lotes):
 | Immutable | 6 (3 + 3) | 18 min 59 s | Todas nuevas | No |
 
 ### 4. Limpieza
-Al terminar, eliminar los recursos para no generar costos: en GitHub, *Actions → 🧨 Eliminar infraestructura AWS → Run workflow* (escribiendo `ELIMINAR`), o manualmente terminando el ambiente de Beanstalk, la instancia RDS y los Security Groups.
+Al terminar, eliminar los recursos para no generar costos: terminar el ambiente de Beanstalk, eliminar la instancia RDS y borrar los Security Groups que queden.
 
 ## Ramas y flujo de trabajo
 
