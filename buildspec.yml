@@ -1,0 +1,61 @@
+# Integración continua del microservicio blacklist en AWS CodeBuild.
+# Instala dependencias, ejecuta las pruebas unitarias y, solo si pasan, genera el artefacto
+# desplegable en Elastic Beanstalk. No despliega (la entrega es solo CI).
+version: 0.2
+
+env:
+  variables:
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    PIP_NO_CACHE_DIR: "1"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - python --version
+      - pip install -r requirements.txt -r requirements-dev.txt
+
+  pre_build:
+    commands:
+      - export COMMIT_ID=$(echo "${CODEBUILD_RESOLVED_SOURCE_VERSION:-local}" | cut -c1-7)
+      - export APP_VERSION="2.0.${CODEBUILD_BUILD_NUMBER:-0}"
+      - echo "Version ${APP_VERSION} - commit ${COMMIT_ID}"
+
+  build:
+    commands:
+      - mkdir -p reports
+      - python -m pytest --junitxml=reports/junit.xml --cov=app --cov-report=xml:reports/coverage.xml --cov-report=term
+
+  post_build:
+    commands:
+      # post_build se ejecuta aunque falle la fase build: si las pruebas fallaron no se genera el artefacto.
+      - |
+        if [ "${CODEBUILD_BUILD_SUCCEEDING:-1}" != "1" ]; then
+          echo "Las pruebas unitarias fallaron: no se genera el artefacto"
+          exit 1
+        fi
+      - mkdir -p build/artifact
+      - cp -r application.py requirements.txt Procfile app .ebextensions build/artifact/
+      - echo "${APP_VERSION}" > build/artifact/VERSION
+      - find build/artifact -name "__pycache__" -type d -prune -exec rm -rf {} +
+      - echo "Artefacto generado (version ${APP_VERSION}, commit ${COMMIT_ID}):" && find build/artifact -type f | sort
+
+reports:
+  pruebas-unitarias:
+    files:
+      - junit.xml
+    base-directory: reports
+    file-format: JUNITXML
+  cobertura:
+    files:
+      - coverage.xml
+    base-directory: reports
+    file-format: COBERTURAXML
+
+artifacts:
+  name: blacklist-artifact
+  base-directory: build/artifact
+  files:
+    - "**/*"
+    - ".ebextensions/**/*"
