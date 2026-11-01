@@ -105,8 +105,7 @@ Sin autenticación. Lo usa el balanceador como health check y devuelve la versi�
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt pytest
-pytest                          # pruebas unitarias
+pip install -r requirements.txt -r requirements-dev.txt
 python application.py           # http://localhost:8000 (usa SQLite si no hay DATABASE_URL)
 
 # Con PostgreSQL:
@@ -120,6 +119,24 @@ Token para probar los endpoints protegidos (debe firmarse con la misma `JWT_SECR
 ```bash
 JWT_SECRET_KEY=<clave> python scripts/generate_token.py
 ```
+
+## Pruebas
+
+Las pruebas unitarias están en `tests/` y se ejecutan con `pytest` usando una base de datos SQLite en memoria (`TestConfig`).
+
+Para ejecutar las pruebas generando el reporte JUnit (`reports/junit.xml`, utilizado por AWS CodeBuild) y el reporte de cobertura con `pytest-cov` (`reports/coverage.xml` y porcentaje en consola):
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest --junitxml=reports/junit.xml --cov=app --cov-report=xml:reports/coverage.xml --cov-report=term
+```
+
+| Archivo generado | Formato | Propósito |
+|---|---|---|
+| `reports/junit.xml` | JUnit XML | Reporte de resultados de pruebas unitarias para AWS CodeBuild |
+| `reports/coverage.xml` | Cobertura XML | Reporte de cobertura de código (≈96%) para AWS CodeBuild |
+
+La infraestructura de integración continua (bucket de artefactos, proyecto CodeBuild `blacklist-ci` y su rol) y la evidencia del build manual están en [`docs/infraestructura-codebuild.md`](docs/infraestructura-codebuild.md). El pipeline `blacklist-ci-pipeline`, que ejecuta ese build en cada commit a `main`, está documentado en [`docs/infraestructura-codepipeline.md`](docs/infraestructura-codepipeline.md).
 
 ## Pruebas con Postman
 
@@ -135,6 +152,8 @@ npx newman run postman/blacklist.postman_collection.json
 ```
 
 ## Despliegue manual en AWS
+
+> **Entrega 2:** la infraestructura se volvió a crear con el ambiente `blacklist-env` (v2.0.0) y la base de datos `blacklist-db`. La configuración, cómo verificarla y la evidencia están en [`docs/infraestructura-rds-beanstalk.md`](docs/infraestructura-rds-beanstalk.md).
 
 ### 1. RDS (PostgreSQL)
 - PostgreSQL, plantilla capa gratuita, `db.t3.micro`, 20 GB, sin acceso público, base de datos inicial `blacklist`.
@@ -170,7 +189,7 @@ Resultados medidos (3 instancias, lote fijo de 1 en las estrategias por lotes):
 | Immutable | 6 (3 + 3) | 18 min 59 s | Todas nuevas | No |
 
 ### 4. Limpieza
-Al terminar, eliminar los recursos para no generar costos: en GitHub, *Actions → 🧨 Eliminar infraestructura AWS → Run workflow* (escribiendo `ELIMINAR`), o manualmente terminando el ambiente de Beanstalk, la instancia RDS y los Security Groups.
+Al terminar, eliminar los recursos para no generar costos: terminar el ambiente de Beanstalk, eliminar la instancia RDS y borrar los Security Groups que queden.
 
 ## Ramas y flujo de trabajo
 
