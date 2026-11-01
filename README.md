@@ -136,6 +136,8 @@ pytest --junitxml=reports/junit.xml --cov=app --cov-report=xml:reports/coverage.
 | `reports/junit.xml` | JUnit XML | Reporte de resultados de pruebas unitarias para AWS CodeBuild |
 | `reports/coverage.xml` | Cobertura XML | Reporte de cobertura de código (≈96%) para AWS CodeBuild |
 
+La infraestructura de integración continua (bucket de artefactos, proyecto CodeBuild `blacklist-ci` y su rol) y la evidencia del build manual están en [`docs/infraestructura-codebuild.md`](docs/infraestructura-codebuild.md).
+
 ## Pruebas con Postman
 
 - **Documentación publicada:** https://documenter.getpostman.com/view/59040697/2sBYHSxfzC (botón *Run in Postman*).
