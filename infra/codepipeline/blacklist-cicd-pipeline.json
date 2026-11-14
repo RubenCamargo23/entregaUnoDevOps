@@ -1,0 +1,118 @@
+{
+  "pipeline": {
+    "name": "blacklist-cicd-pipeline",
+    "roleArn": "arn:aws:iam::002493919126:role/blacklist-cicd-pipeline-role",
+    "artifactStore": {
+      "type": "S3",
+      "location": "blacklist-ci-artifacts-002493919126"
+    },
+    "stages": [
+      {
+        "name": "Source",
+        "actions": [
+          {
+            "name": "GitHub",
+            "actionTypeId": {
+              "category": "Source",
+              "owner": "AWS",
+              "provider": "CodeStarSourceConnection",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "BranchName": "main",
+              "ConnectionArn": "arn:aws:codeconnections:us-east-2:002493919126:connection/e04df9f9-0bd8-409d-bd8a-ec33156b4312",
+              "DetectChanges": "true",
+              "FullRepositoryId": "RubenCamargo23/entregaUnoDevOps",
+              "OutputArtifactFormat": "CODE_ZIP"
+            },
+            "outputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ],
+            "inputArtifacts": []
+          }
+        ]
+      },
+      {
+        "name": "Build",
+        "actions": [
+          {
+            "name": "PruebasEImagen",
+            "actionTypeId": {
+              "category": "Build",
+              "owner": "AWS",
+              "provider": "CodeBuild",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "ProjectName": "blacklist-cicd"
+            },
+            "outputArtifacts": [
+              {
+                "name": "BuildOutput"
+              }
+            ],
+            "inputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Deploy",
+        "actions": [
+          {
+            "name": "FargateBlueGreen",
+            "actionTypeId": {
+              "category": "Deploy",
+              "owner": "AWS",
+              "provider": "CodeDeployToECS",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "AppSpecTemplateArtifact": "BuildOutput",
+              "AppSpecTemplatePath": "appspec.yaml",
+              "ApplicationName": "blacklist-ecs-app",
+              "DeploymentGroupName": "blacklist-ecs-dg",
+              "Image1ArtifactName": "BuildOutput",
+              "Image1ContainerName": "IMAGE1_NAME",
+              "TaskDefinitionTemplateArtifact": "BuildOutput",
+              "TaskDefinitionTemplatePath": "taskdef.json"
+            },
+            "outputArtifacts": [],
+            "inputArtifacts": [
+              {
+                "name": "BuildOutput"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "executionMode": "QUEUED",
+    "pipelineType": "V2",
+    "triggers": [
+      {
+        "providerType": "CodeStarSourceConnection",
+        "gitConfiguration": {
+          "sourceActionName": "GitHub",
+          "push": [
+            {
+              "branches": {
+                "includes": [
+                  "main"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
