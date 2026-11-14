@@ -1,0 +1,69 @@
+# CI/CD del microservicio blacklist en AWS CodeBuild (Entrega 3).
+# Ejecuta las pruebas unitarias y, solo si pasan, construye la imagen del contenedor, la publica en
+# Amazon ECR y genera los archivos que usa AWS CodeDeploy para desplegar en AWS Fargate.
+version: 0.2
+
+env:
+  variables:
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    PIP_NO_CACHE_DIR: "1"
+    ECR_REPOSITORY: "blacklist-app"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - python --version
+      - pip install -r requirements.txt -r requirements-dev.txt
+
+  pre_build:
+    commands:
+      - export COMMIT_ID=$(echo "${CODEBUILD_RESOLVED_SOURCE_VERSION:-local}" | cut -c1-7)
+      - export APP_VERSION="3.0.${CODEBUILD_BUILD_NUMBER:-0}"
+      - export ACCOUNT_ID=$(echo "$CODEBUILD_BUILD_ARN" | cut -d':' -f5)
+      - export REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - export IMAGE_URI="${REGISTRY}/${ECR_REPOSITORY}"
+      - echo "Version ${APP_VERSION} - commit ${COMMIT_ID} - imagen ${IMAGE_URI}"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+
+  build:
+    commands:
+      # 1. Integración continua: si una prueba falla, el comando termina con error y no se ejecuta nada más.
+      - mkdir -p reports
+      - python -m pytest --junitxml=reports/junit.xml --cov=app --cov-report=xml:reports/coverage.xml --cov-report=term
+      # 2. Imagen del contenedor (solo se construye si las pruebas pasaron).
+      - docker build --build-arg APP_VERSION="$APP_VERSION" -t "$IMAGE_URI:$APP_VERSION" -t "$IMAGE_URI:$COMMIT_ID" -t "$IMAGE_URI:latest" .
+
+  post_build:
+    commands:
+      # post_build se ejecuta aunque falle la fase build: sin pruebas exitosas no se publica nada.
+      - |
+        if [ "${CODEBUILD_BUILD_SUCCEEDING:-1}" != "1" ]; then
+          echo "Las pruebas unitarias fallaron: no se publica la imagen ni se despliega"
+          exit 1
+        fi
+      - docker push "$IMAGE_URI:$APP_VERSION"
+      - docker push "$IMAGE_URI:$COMMIT_ID"
+      - docker push "$IMAGE_URI:latest"
+      # Archivos para el despliegue con AWS CodeDeploy (blue/green en Fargate).
+      - printf '{"ImageURI":"%s"}' "$IMAGE_URI:$APP_VERSION" > imageDetail.json
+      - cat imageDetail.json
+
+reports:
+  pruebas-unitarias:
+    files:
+      - junit.xml
+    base-directory: reports
+    file-format: JUNITXML
+  cobertura:
+    files:
+      - coverage.xml
+    base-directory: reports
+    file-format: COBERTURAXML
+
+artifacts:
+  files:
+    - imageDetail.json
+    - taskdef.json
+    - appspec.yaml
