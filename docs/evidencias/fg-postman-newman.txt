@@ -1,0 +1,60 @@
+newman
+
+Blacklist Microservice - Entrega 1 DevOps
+
+→ Health check
+  GET http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/health [200 OK, 187B, 209ms]
+  ✓  Status 200
+  ✓  status ok
+
+→ Agregar email a la lista negra
+  POST http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists [201 CREATED, 531B, 108ms]
+  ✓  Status 201
+  ✓  Confirma la creacion
+
+→ Agregar email duplicado
+  POST http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists [409 CONFLICT, 251B, 101ms]
+  ✓  Status 409
+
+→ Agregar email con datos invalidos
+  POST http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists [400 BAD REQUEST, 361B, 98ms]
+  ✓  Status 400
+  ✓  Reporta errores
+
+→ Agregar email sin token
+  POST http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists [401 UNAUTHORIZED, 242B, 96ms]
+  ✓  Status 401
+
+→ Consultar email en lista negra
+  GET http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists/cliente.1794756058555@example.com [200 OK, 264B, 100ms]
+  ✓  Status 200
+  ✓  Esta en la lista negra
+
+→ Consultar email que no esta en lista negra
+  GET http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists/limpio@example.com [200 OK, 231B, 102ms]
+  ✓  Status 200
+  ✓  No esta en la lista negra
+
+→ Consultar email con token invalido
+  GET http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/blacklists/cliente.1794756058555@example.com [401 UNAUTHORIZED, 232B, 96ms]
+  ✓  Status 401
+
+┌─────────────────────────┬────────────────────┬───────────────────┐
+│                         │           executed │            failed │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│              iterations │                  1 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│                requests │                  8 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│            test-scripts │                  8 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│      prerequest-scripts │                  1 │                 0 │
+├─────────────────────────┼────────────────────┼───────────────────┤
+│              assertions │                 13 │                 0 │
+├─────────────────────────┴────────────────────┴───────────────────┤
+│ total run duration: 1072ms                                       │
+├──────────────────────────────────────────────────────────────────┤
+│ total data received: 1.06kB (approx)                             │
+├──────────────────────────────────────────────────────────────────┤
+│ average response time: 113ms [min: 96ms, max: 209ms, s.d.: 36ms] │
+└──────────────────────────────────────────────────────────────────┘

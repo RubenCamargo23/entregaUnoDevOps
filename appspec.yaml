@@ -1,0 +1,12 @@
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: <TASK_DEFINITION>
+        LoadBalancerInfo:
+          ContainerName: "blacklist-app"
+          ContainerPort: 8000
+        PlatformVersion: "LATEST"
+Hooks:
+  - AfterAllowTestTraffic: "CodeDeployHook_blacklist-smoke"

@@ -1,0 +1,57 @@
+# Logs de inicialización del despliegue manual en AWS Fargate (imagen blacklist-app:3.0.0, blacklist-task:1)
+# Grupo de logs: /ecs/blacklist (CloudWatch Logs, us-east-2). Primeros 25 eventos de cada tarea. Horas en UTC.
+# Exportado el 2026-11-15 con: aws logs get-log-events --start-from-head --limit 25
+
+## Tarea be9da871d956457293cdda2a1dece96e  (stream blacklist/blacklist-app/be9da871d956457293cdda2a1dece96e)
+[2026-11-14 13:02:04 +0000] [1] [INFO] Starting gunicorn 23.0.0
+[2026-11-14 13:02:04 +0000] [1] [INFO] Listening at: http://0.0.0.0:8000 (1)
+[2026-11-14 13:02:04 +0000] [1] [INFO] Using worker: sync
+[2026-11-14 13:02:04 +0000] [8] [INFO] Booting worker with pid: 8
+[2026-11-14 13:02:04 +0000] [9] [INFO] Booting worker with pid: 9
+[2026-11-14 13:02:04 +0000] [10] [INFO] Booting worker with pid: 10
+172.31.18.242 - - [14/Nov/2026:13:02:14 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:02:26 +0000] "GET /health HTTP/1.1" 200 37 "-" "curl/8.7.1"
+172.31.18.242 - - [14/Nov/2026:13:02:29 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:02:44 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "POST /blacklists HTTP/1.1" 201 373 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "POST /blacklists HTTP/1.1" 400 201 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "GET /blacklists/cliente.1794661366053@example.com HTTP/1.1" 200 113 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "GET /blacklists/cliente.1794661366053@example.com HTTP/1.1" 401 72 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:59 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:14 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:29 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:03:42 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:44 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:03:57 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:59 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:04:12 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:04:14 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:04:27 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:04:29 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+
+## Tarea 8616f8b9bdf5462089497587f3e7ae6b  (stream blacklist/blacklist-app/8616f8b9bdf5462089497587f3e7ae6b)
+[2026-11-14 13:02:05 +0000] [1] [INFO] Starting gunicorn 23.0.0
+[2026-11-14 13:02:05 +0000] [1] [INFO] Listening at: http://0.0.0.0:8000 (1)
+[2026-11-14 13:02:05 +0000] [1] [INFO] Using worker: sync
+[2026-11-14 13:02:05 +0000] [7] [INFO] Booting worker with pid: 7
+[2026-11-14 13:02:05 +0000] [8] [INFO] Booting worker with pid: 8
+[2026-11-14 13:02:05 +0000] [9] [INFO] Booting worker with pid: 9
+172.31.18.242 - - [14/Nov/2026:13:02:14 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:02:29 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:02:44 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "GET /health HTTP/1.1" 200 37 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "POST /blacklists HTTP/1.1" 409 95 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "POST /blacklists HTTP/1.1" 401 82 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:46 +0000] "GET /blacklists/limpio@example.com HTTP/1.1" 200 81 "-" "PostmanRuntime/7.39.1"
+172.31.18.242 - - [14/Nov/2026:13:02:47 +0000] "POST /blacklists HTTP/1.1" 201 353 "-" "curl/8.7.1"
+172.31.18.242 - - [14/Nov/2026:13:02:59 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:14 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:29 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:03:43 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:44 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:03:58 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:03:59 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:04:13 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:04:14 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.3.49 - - [14/Nov/2026:13:04:28 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
+172.31.18.242 - - [14/Nov/2026:13:04:29 +0000] "GET /health HTTP/1.1" 200 37 "-" "ELB-HealthChecker/2.0"
