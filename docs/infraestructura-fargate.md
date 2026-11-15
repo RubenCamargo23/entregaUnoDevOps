@@ -2,7 +2,7 @@
 
 Responsable: Diego Rojas ([@diegorojasd](https://github.com/diegorojasd)) · Rama: `ft_fargate_manual` · Región: `us-east-2` (Ohio) · Cuenta: `002493919126`
 
-Este documento registra el ambiente de contenedores del microservicio blacklist sobre AWS Fargate: la imagen, la Task Definition, el clúster, la red y el rol de IAM. El ambiente se configuró manualmente (sin plantilla de IaC ni pipeline) el 2026-11-14 y sobre él trabajan después CodeDeploy y el pipeline de CI/CD, documentados en [`pipeline-cicd.md`](pipeline-cicd.md).
+Este documento registra el ambiente de contenedores del microservicio blacklist sobre AWS Fargate: la imagen, la Task Definition, el clúster, la red, el rol de IAM y el despliegue manual inicial del microservicio. El ambiente se configuró manualmente (sin plantilla de IaC ni pipeline) el 2026-11-14 y sobre él trabajan después CodeDeploy y el pipeline de CI/CD, documentados en [`pipeline-cicd.md`](pipeline-cicd.md).
 
 ## Resumen
 
@@ -87,7 +87,7 @@ La revisión inicial es `blacklist-task:1` (imagen `blacklist-app:3.0.0`, regist
 | Versión de plataforma | 1.4.0 |
 | Subredes | `subnet-01e1367ae4e437185` (2a), `subnet-0c90619c6bb3a1e04` (2b), `subnet-06dc2b6f136e69cd4` (2c) |
 | Security Group | `blacklist-ecs-tasks-sg` |
-| IP pública | Habilitada (ver [sección 7](#7-supuestos-y-limitaciones)) |
+| IP pública | Habilitada (ver [sección 7](#8-supuestos-y-limitaciones)) |
 | Balanceador | Contenedor `blacklist-app:8000` registrado en un grupo de destino del ALB |
 | Controlador de despliegue | `CODE_DEPLOY` (blue/green) |
 
@@ -126,7 +126,56 @@ Las tareas no son alcanzables desde Internet aunque tengan IP pública: su Secur
 
 El rol lo usa el agente de ECS para arrancar la tarea; el contenedor no recibe credenciales de AWS. ECS usa además su rol vinculado al servicio `AWSServiceRoleForECS`, que crea AWS.
 
-## 6. Verificación
+## 6. Despliegue manual del microservicio
+
+El primer despliegue se hizo a mano el 2026-11-14 con el usuario `devops-cli`, antes de que existiera el pipeline. La imagen contiene el microservicio completo: `GET /health`, `POST /blacklists` y `GET /blacklists/<email>`.
+
+| Hora (UTC-5) | Paso | Resultado |
+|---|---|---|
+| 07:59:58 | `docker push` de `blacklist-app:3.0.0` a ECR | Imagen de 56,64 MB, digest `sha256:4ea11a36…` |
+| 08:00:31 | Registro de la Task Definition | `blacklist-task:1` con la imagen `3.0.0` |
+| 08:01:35 | Creación del servicio `blacklist-service` | 2 tareas deseadas, Fargate, detrás del ALB |
+| 08:02:04 | Arranque de los contenedores | Gunicorn escuchando en `0.0.0.0:8000` con 3 workers |
+| 08:02:14 | Primer health check del balanceador | `GET /health` → 200 en las dos tareas |
+| 08:02:26 – 08:02:47 | Prueba funcional con `curl` y Postman por el balanceador | Respuestas esperadas (ver abajo) |
+
+La imagen se construyó y publicó como en la [sección 1](#1-imagen-del-contenedor) y la Task Definition se registró como en la [sección 2](#2-task-definition-blacklist-task). El servicio se creó así:
+
+```bash
+aws ecs create-service --region us-east-2 --cluster blacklist-cluster --service-name blacklist-service \
+  --task-definition blacklist-task:1 --desired-count 2 --launch-type FARGATE \
+  --deployment-controller type=CODE_DEPLOY --health-check-grace-period-seconds 60 \
+  --network-configuration 'awsvpcConfiguration={subnets=[subnet-01e1367ae4e437185,subnet-0c90619c6bb3a1e04,subnet-06dc2b6f136e69cd4],securityGroups=[sg-0ecb747fabbe0242f],assignPublicIp=ENABLED}' \
+  --load-balancers targetGroupArn=<ARN de blacklist-tg-blue>,containerName=blacklist-app,containerPort=8000
+```
+
+### Inspección de los registros
+
+Los logs de las dos tareas iniciales están en CloudWatch Logs, grupo `/ecs/blacklist`:
+
+- **Arranque limpio.** Gunicorn 23.0.0 inicia, abre el puerto 8000 y levanta los 3 workers en menos de un segundo. No hay ningún evento `ERROR`, `CRITICAL` ni `Traceback` en los dos streams.
+- **Conexión a RDS correcta.** `POST /blacklists` responde 201 y `GET /blacklists/<email>` responde 200, lo que confirma que la tarea leyó los secretos de SSM y escribió en la base de datos.
+- **Health checks.** 79 respuestas 200 a `GET /health` por tarea, ninguna fallida.
+- **Los 400, 401 y 409 son casos negativos de la colección de Postman** (cuerpo inválido, sin token, email duplicado), no errores de la aplicación.
+- **Cierre.** Las tareas terminaron a las 08:17:59 con `Handling signal: term`: las reemplazó el primer despliegue del pipeline (versión `3.0.1`), no una falla.
+
+Como el grupo de logs retiene 7 días, los primeros eventos de cada tarea quedaron exportados en [`evidencias/fg-logs-inicio.txt`](evidencias/fg-logs-inicio.txt).
+
+```bash
+# Streams del grupo, del más antiguo al más reciente
+aws logs describe-log-streams --region us-east-2 --log-group-name /ecs/blacklist --order-by LastEventTime --no-descending
+
+# Eventos de una tarea desde el arranque
+aws logs get-log-events --region us-east-2 --log-group-name /ecs/blacklist \
+  --log-stream-name blacklist/blacklist-app/<id-de-la-tarea> --start-from-head
+
+# Búsqueda de errores en todo el grupo
+aws logs filter-log-events --region us-east-2 --log-group-name /ecs/blacklist --filter-pattern '?ERROR ?Traceback ?CRITICAL'
+```
+
+Los despliegues posteriores ya no son manuales: los hace CodeDeploy desde el pipeline.
+
+## 7. Verificación
 
 Estado del 2026-11-15:
 
@@ -160,7 +209,7 @@ aws iam get-role-policy --role-name blacklist-ecs-task-execution-role --policy-n
 curl http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/health
 ```
 
-## 7. Supuestos y limitaciones
+## 8. Supuestos y limitaciones
 
 - **Tareas en subredes públicas con IP pública.** La VPC por defecto no tiene subredes privadas ni NAT Gateway, y sin salida a Internet la tarea no puede descargar la imagen de ECR ni leer los secretos. Se asigna IP pública para no pagar un NAT Gateway; el acceso de entrada lo restringe el Security Group.
 - **Sin rol de tarea.** Si la aplicación llegara a usar servicios de AWS, habría que crear uno y agregarlo como `taskRoleArn`.
@@ -169,7 +218,7 @@ curl http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/health
 - **Costo.** Fargate, el balanceador y RDS se cobran mientras estén activos. Hay que eliminarlos al cerrar la entrega.
 - La infraestructura se creó manualmente; no hay plantilla de IaC en el repositorio.
 
-## 8. Evidencia para el documento de la entrega
+## 9. Evidencia para el documento de la entrega
 
 Las capturas están en [`evidencias/`](evidencias/):
 
@@ -181,6 +230,11 @@ Las capturas están en [`evidencias/`](evidencias/):
 | `fg-servicio-red.png` | `blacklist-service` → Configuration and networking: VPC, subredes y Security Group |
 | `fg-sg-tareas.png` | `blacklist-ecs-tasks-sg`: entrada TCP 8000 solo desde el Security Group del balanceador |
 | `fg-sg-alb.png` | `blacklist-ecs-alb-sg`: entrada TCP 80 y 8080 |
+| `fg-ecr-imagen.png` | Repositorio `blacklist-app` en ECR: imagen `3.0.0` del despliegue manual y las que publicó el pipeline |
+| `fg-logs-inicio.png` | CloudWatch Logs, tarea inicial: arranque de Gunicorn, health checks 200 y primeras peticiones |
+| `fg-logs-inicio.txt` | Primeros 25 eventos de log de cada una de las dos tareas iniciales |
+| `fg-tarea-running.png` | Detalle de una tarea del servicio: *Last status* Running, Fargate, 0.25 vCPU / 0.5 GiB |
+| `fg-servicio-salud.png` | `blacklist-service`: Active, 2 tareas en ejecución, despliegue *Succeeded* |
 | `fg-iam-rol.png` | `blacklist-ecs-task-execution-role`: `AmazonECSTaskExecutionRolePolicy` y la política inline `blacklist-ecs-secrets` |
 
 Capturas tomadas el 2026-11-15.
