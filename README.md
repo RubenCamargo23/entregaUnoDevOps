@@ -155,6 +155,8 @@ npx newman run postman/blacklist.postman_collection.json
 
 > **Entrega 2:** la infraestructura se volvió a crear con el ambiente `blacklist-env` (v2.0.0) y la base de datos `blacklist-db`. La configuración, cómo verificarla y la evidencia están en [`docs/infraestructura-rds-beanstalk.md`](docs/infraestructura-rds-beanstalk.md).
 
+> **Entrega 3:** el microservicio también corre en contenedores sobre **AWS Fargate** (clúster `blacklist-cluster`, Task Definition `blacklist-task`). La imagen, la red, el rol de IAM, cómo verificarlos y la evidencia están en [`docs/infraestructura-fargate.md`](docs/infraestructura-fargate.md).
+
 ### 1. RDS (PostgreSQL)
 - PostgreSQL, plantilla capa gratuita, `db.t3.micro`, 20 GB, sin acceso público, base de datos inicial `blacklist`.
 - Security Group `blacklist-db-sg`: entrada **5432** solo desde el Security Group de las instancias de Beanstalk.
