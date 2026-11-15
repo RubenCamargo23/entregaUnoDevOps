@@ -2,7 +2,7 @@
 
 Responsable: Diego Rojas ([@diegorojasd](https://github.com/diegorojasd)) · Rama: `ft_fargate_manual` · Región: `us-east-2` (Ohio) · Cuenta: `002493919126`
 
-Este documento registra el ambiente de contenedores del microservicio blacklist sobre AWS Fargate: la imagen, la Task Definition, el clúster, la red, el rol de IAM y el despliegue manual inicial del microservicio. El ambiente se configuró manualmente (sin plantilla de IaC ni pipeline) el 2026-11-14 y sobre él trabajan después CodeDeploy y el pipeline de CI/CD, documentados en [`pipeline-cicd.md`](pipeline-cicd.md).
+Este documento registra el ambiente de contenedores del microservicio blacklist sobre AWS Fargate: la imagen, la Task Definition, el clúster, la red, el rol de IAM, el despliegue manual inicial del microservicio y su validación con Postman. El ambiente se configuró manualmente (sin plantilla de IaC ni pipeline) el 2026-11-14 y sobre él trabajan después CodeDeploy y el pipeline de CI/CD, documentados en [`pipeline-cicd.md`](pipeline-cicd.md).
 
 ## Resumen
 
@@ -87,7 +87,7 @@ La revisión inicial es `blacklist-task:1` (imagen `blacklist-app:3.0.0`, regist
 | Versión de plataforma | 1.4.0 |
 | Subredes | `subnet-01e1367ae4e437185` (2a), `subnet-0c90619c6bb3a1e04` (2b), `subnet-06dc2b6f136e69cd4` (2c) |
 | Security Group | `blacklist-ecs-tasks-sg` |
-| IP pública | Habilitada (ver [sección 7](#8-supuestos-y-limitaciones)) |
+| IP pública | Habilitada (ver [sección 7](#9-supuestos-y-limitaciones)) |
 | Balanceador | Contenedor `blacklist-app:8000` registrado en un grupo de destino del ALB |
 | Controlador de despliegue | `CODE_DEPLOY` (blue/green) |
 
@@ -175,7 +175,46 @@ aws logs filter-log-events --region us-east-2 --log-group-name /ecs/blacklist --
 
 Los despliegues posteriores ya no son manuales: los hace CodeDeploy desde el pipeline.
 
-## 7. Verificación
+## 7. Validación con Postman
+
+El microservicio es público a través del balanceador (HTTP, puerto 80):
+
+```
+http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com
+```
+
+Se usa el DNS del balanceador y no la IP pública de las tareas, porque esas IP cambian en cada despliegue y el Security Group de las tareas solo admite tráfico del balanceador. El DNS se obtiene en la consola (EC2 → Load Balancers → `blacklist-ecs-alb`, o ECS → `blacklist-service` → *Configuration and networking*) o con:
+
+```bash
+aws elbv2 describe-load-balancers --region us-east-2 --names blacklist-ecs-alb --query 'LoadBalancers[0].DNSName' --output text
+```
+
+- **Colección**: [`postman/blacklist.postman_collection.json`](../postman/blacklist.postman_collection.json), la misma de las entregas anteriores, con 8 requests y **13 tests**.
+- **Environment**: [`postman/blacklist-fargate.postman_environment.json`](../postman/blacklist-fargate.postman_environment.json). Solo cambia `base_url`.
+- **Token**: sirve el que ya trae la colección, porque el servicio en Fargate usa la misma `JWT_SECRET_KEY` que el ambiente de Beanstalk.
+
+En Postman: *Import* de los dos archivos, elegir el environment **Blacklist - AWS Fargate** y ejecutar la colección con *Run collection*. Por línea de comandos:
+
+```bash
+npx newman run postman/blacklist.postman_collection.json -e postman/blacklist-fargate.postman_environment.json
+```
+
+Resultado del 2026-11-15 (8 requests, 0 fallidos, **13/13 tests**, 1,07 s, respuesta promedio de 113 ms):
+
+| Request | Método y ruta | Respuesta |
+|---|---|---|
+| Health check | `GET /health` | **200 OK** |
+| Agregar email a la lista negra | `POST /blacklists` | 201 Created |
+| Agregar email duplicado | `POST /blacklists` | 409 Conflict (esperado) |
+| Agregar email con datos inválidos | `POST /blacklists` | 400 Bad Request (esperado) |
+| Agregar email sin token | `POST /blacklists` | 401 Unauthorized (esperado) |
+| Consultar email en lista negra | `GET /blacklists/<email>` | **200 OK** |
+| Consultar email que no está en lista negra | `GET /blacklists/<email>` | **200 OK** |
+| Consultar email con token inválido | `GET /blacklists/<email>` | 401 Unauthorized (esperado) |
+
+Los tres casos de consulta exitosa responden 200 y la creación responde 201. Los 400, 401 y 409 son los casos negativos que la colección verifica a propósito.
+
+## 8. Verificación
 
 Estado del 2026-11-15:
 
@@ -209,7 +248,7 @@ aws iam get-role-policy --role-name blacklist-ecs-task-execution-role --policy-n
 curl http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/health
 ```
 
-## 8. Supuestos y limitaciones
+## 9. Supuestos y limitaciones
 
 - **Tareas en subredes públicas con IP pública.** La VPC por defecto no tiene subredes privadas ni NAT Gateway, y sin salida a Internet la tarea no puede descargar la imagen de ECR ni leer los secretos. Se asigna IP pública para no pagar un NAT Gateway; el acceso de entrada lo restringe el Security Group.
 - **Sin rol de tarea.** Si la aplicación llegara a usar servicios de AWS, habría que crear uno y agregarlo como `taskRoleArn`.
@@ -218,7 +257,7 @@ curl http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com/health
 - **Costo.** Fargate, el balanceador y RDS se cobran mientras estén activos. Hay que eliminarlos al cerrar la entrega.
 - La infraestructura se creó manualmente; no hay plantilla de IaC en el repositorio.
 
-## 9. Evidencia para el documento de la entrega
+## 10. Evidencia para el documento de la entrega
 
 Las capturas están en [`evidencias/`](evidencias/):
 
@@ -235,6 +274,8 @@ Las capturas están en [`evidencias/`](evidencias/):
 | `fg-logs-inicio.txt` | Primeros 25 eventos de log de cada una de las dos tareas iniciales |
 | `fg-tarea-running.png` | Detalle de una tarea del servicio: *Last status* Running, Fargate, 0.25 vCPU / 0.5 GiB |
 | `fg-servicio-salud.png` | `blacklist-service`: Active, 2 tareas en ejecución, despliegue *Succeeded* |
+| `fg-postman-13-13.png` | Resultado de la colección contra el balanceador de Fargate: 8 requests, 13/13 tests |
+| `fg-postman-newman.txt` | Salida completa de Newman de esa ejecución |
 | `fg-iam-rol.png` | `blacklist-ecs-task-execution-role`: `AmazonECSTaskExecutionRolePolicy` y la política inline `blacklist-ecs-secrets` |
 
 Capturas tomadas el 2026-11-15.

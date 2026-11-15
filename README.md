@@ -143,7 +143,7 @@ La infraestructura de integración continua (bucket de artefactos, proyecto Code
 - **Documentación publicada:** https://documenter.getpostman.com/view/59040697/2sBYHSxfzC (botón *Run in Postman*).
 - **Colección:** `postman/blacklist.postman_collection.json`, con 8 escenarios y tests automáticos: health, agregar (201), duplicado (409), datos inválidos (400), sin token (401), consultar email bloqueado y no bloqueado, token inválido (401).
 - La colección ya trae `base_url`, `token` y `app_uuid` como variables de colección, así que **se ejecuta contra AWS sin seleccionar environment**: *Import* → clic derecho en la colección → *Run collection*.
-- Environments opcionales en `postman/`: `blacklist-aws-SIN-TOKEN` (si Postman bloquea la importación por *Secrets Detected*), `blacklist-aws` y `blacklist-local`.
+- Environments opcionales en `postman/`: `blacklist-aws-SIN-TOKEN` (si Postman bloquea la importación por *Secrets Detected*), `blacklist-aws` y `blacklist-local`, y `blacklist-fargate` (servicio en AWS Fargate, Entrega 3).
 
 Desde la terminal:
 
