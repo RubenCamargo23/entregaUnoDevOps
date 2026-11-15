@@ -25,7 +25,7 @@
       "environment": [
         {
           "name": "RDS_HOSTNAME",
-          "value": "blacklist-db.cr0yqk8g4kn0.us-east-2.rds.amazonaws.com"
+          "value": "blacklist-db-error.cr0yqk8g4kn0.us-east-2.rds.amazonaws.com"
         },
         {
           "name": "RDS_PORT",
