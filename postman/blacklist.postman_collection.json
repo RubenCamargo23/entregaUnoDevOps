@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Blacklist Microservice - Entrega 1 DevOps",
-    "description": "Microservicio de lista negra global de emails (Flask + PostgreSQL) desplegado en AWS Elastic Beanstalk.\n\nTodos los endpoints `/blacklists` requieren un **Bearer Token** estatico.\n\nLa coleccion ya incluye como **variables de coleccion** la URL del ambiente en AWS (`base_url`), el token (`token`) y un `app_uuid` de ejemplo, por lo que se puede ejecutar directamente sin seleccionar un environment. Si se selecciona un environment, sus valores tienen prioridad.\n\nEjecute la coleccion completa con el Runner de Postman: las peticiones estan ordenadas como escenarios de prueba y cada una tiene tests automaticos.",
+    "name": "Blacklist Microservice - DevOps (Entrega 3)",
+    "description": "Microservicio de lista negra global de emails (Flask + PostgreSQL) desplegado en contenedores sobre AWS Fargate (Amazon ECS), detrás de un Application Load Balancer, con entrega continua blue/green mediante AWS CodePipeline y CodeDeploy.\n\nTodos los endpoints `/blacklists` requieren un **Bearer Token** estatico.\n\nLa coleccion ya incluye como **variables de coleccion** la URL del ambiente en AWS (`base_url`), el token (`token`) y un `app_uuid` de ejemplo, por lo que se puede ejecutar directamente sin seleccionar un environment. Si se selecciona un environment, sus valores tienen prioridad.\n\nEjecute la coleccion completa con el Runner de Postman: las peticiones estan ordenadas como escenarios de prueba y cada una tiene tests automaticos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -29,7 +29,7 @@
             "health"
           ]
         },
-        "description": "Endpoint usado por el balanceador / Elastic Beanstalk para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
+        "description": "Endpoint usado por el balanceador para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
         "auth": {
           "type": "noauth"
         }
@@ -61,7 +61,7 @@
                 "health"
               ]
             },
-            "description": "Endpoint usado por el balanceador / Elastic Beanstalk para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
+            "description": "Endpoint usado por el balanceador para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
             "auth": {
               "type": "noauth"
             }
@@ -730,10 +730,34 @@
       ]
     }
   ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Token estático del microservicio y URL del balanceador de AWS Fargate.",
+          "// Se definen en este script para que la colección publicada funcione sin configurar nada:",
+          "// Postman guarda en su Vault los tokens escritos en Variables, y el Vault no se publica.",
+          "const TOKEN = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc5MjI3Mzc4MSwianRpIjoiYjhjYTg2YTYtYWQ5Ny00NDY0LTliZmMtZTYwOGI1OTIxNDBiIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImRldm9wcy1ibGFja2xpc3QtY2xpZW50IiwibmJmIjoxNzkyMjczNzgxLCJjc3JmIjoiNTA2NmJkZjMtNTY4Yi00M2ZiLThmYWUtODc0ZjJjODZiZjkzIn0.QS_vDlRe__XEU2cmf-da_8ICLIuZ4Ov4Sq9kzuVDYB0\";",
+          "const FARGATE_URL = \"http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com\";",
+          "",
+          "const token = pm.variables.get(\"token\");",
+          "if (!token || !token.startsWith(\"eyJ\")) {",
+          "    pm.collectionVariables.set(\"token\", TOKEN);",
+          "}",
+          "const baseUrl = pm.variables.get(\"base_url\");",
+          "if (!baseUrl || baseUrl.includes(\"elasticbeanstalk\")) {",
+          "    pm.collectionVariables.set(\"base_url\", FARGATE_URL);",
+          "}"
+        ]
+      }
+    }
+  ],
   "variable": [
     {
       "key": "base_url",
-      "value": "http://blacklist-devops-e1.us-east-2.elasticbeanstalk.com",
+      "value": "http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com",
       "type": "string"
     },
     {

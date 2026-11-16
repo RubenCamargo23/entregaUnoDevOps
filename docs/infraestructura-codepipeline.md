@@ -13,7 +13,7 @@ Este documento registra el pipeline que ejecuta automáticamente la integración
 | Conexión con GitHub | `blacklist-github` (AWS CodeConnections) | **Available** |
 | Repositorio | `RubenCamargo23/entregaUnoDevOps` | Autorizado por el dueño del repositorio |
 | Pipeline | `blacklist-ci-pipeline` (tipo V2, modo QUEUED) | Source → Build, sin Deploy |
-| Rama que dispara el pipeline | `main`, por push | ⏳ Pendiente: hoy apunta a `apoyo_entrega2` (ver [sección 4](#4-cambio-de-rama-a-main)) |
+| Rama que dispara el pipeline | `main`, por push | ✅ Configurado (ver [sección 4](#4-cambio-de-rama-a-main)). En la Entrega 3 el pipeline quedó retirado (ver [sección 7](#7-entrega-3-pipeline-retirado)) |
 | Rol del pipeline | `blacklist-codepipeline-role` | Permisos mínimos |
 | Almacén de artefactos | `blacklist-ci-artifacts-002493919126` | El mismo bucket del CI |
 
@@ -54,9 +54,9 @@ Usa una política inline, `blacklist-codepipeline-policy`:
 
 No tiene permisos de despliegue (Elastic Beanstalk, CodeDeploy), coherente con que el pipeline no tiene etapa Deploy.
 
-## 3. Historial previo (rama de apoyo)
+## 3. Historial previo (pruebas antes de `main`)
 
-El pipeline se creó y se probó contra la rama `apoyo_entrega2`, porque `main` todavía no tenía `buildspec.yml`:
+El pipeline se creó y se probó sobre una rama de trabajo, porque `main` todavía no tenía `buildspec.yml`:
 
 | Ejecución | Disparo | Commit | Resultado |
 |---|---|---|---|
@@ -64,18 +64,18 @@ El pipeline se creó y se probó contra la rama `apoyo_entrega2`, porque `main` 
 | 2 | Push (webhook) | `70466fd` prueba fallida intencional | **Failed** en Build |
 | 3 | Push (webhook) | `1346ab1` revert | Succeeded |
 
-Las ejecuciones 2 y 3 ya muestran que un push dispara el pipeline automáticamente y que una prueba fallida lo detiene. `apoyo_entrega2` se eliminará y no se integrará a `develop`.
+Las ejecuciones 2 y 3 ya muestran que un push dispara el pipeline automáticamente y que una prueba fallida lo detiene.
 
 ## 4. Cambio de rama a `main`
 
-> ⏳ **Pendiente.** Se hace después del PR `develop → main` (paso 3 del equipo). Mientras `main` no tenga `buildspec.yml`, cualquier ejecución sobre `main` falla.
+> ✅ **Hecho** después del PR `develop → main` (paso 3 del equipo), cuando `main` ya tenía `buildspec.yml`.
 
 Cambios (solo estos dos valores):
 
 | Campo | Antes | Después |
 |---|---|---|
-| Etapa Source → acción `GitHub` → `BranchName` | `apoyo_entrega2` | `main` |
-| Triggers → push → branches → includes | `apoyo_entrega2` | `main` |
+| Etapa Source → acción `GitHub` → `BranchName` | rama de trabajo | `main` |
+| Triggers → push → branches → includes | rama de trabajo | `main` |
 
 Desde la consola: **CodePipeline → `blacklist-ci-pipeline` → Edit**. En la etapa Source, *Edit stage → Branch name = `main`*. En *Edit: Pipeline trigger*, cambiar el filtro de rama del push a `main`. Al final, **Save**.
 
@@ -112,3 +112,13 @@ Las capturas están en [`evidencias/`](evidencias/):
 | `cp-source-main.png` | Configuración de la acción Source: repositorio y rama `main` | ⏳ Tras el cambio |
 | `cp-trigger-main.png` | Trigger push filtrado a `main` | ⏳ Tras el cambio |
 | `cp-ejecucion-main.png` | Ejecución disparada por un commit a `main` (WebhookV2) | ⏳ Tras el primer commit a `main` |
+
+## 7. Entrega 3: pipeline retirado
+
+En la Entrega 3 lo reemplaza `blacklist-cicd-pipeline` (Source → Build con pruebas e imagen Docker → Deploy blue/green en AWS Fargate), documentado en [`pipeline-cicd.md`](pipeline-cicd.md). Para que un merge a `main` no ejecute los dos pipelines, en `blacklist-ci-pipeline` se **deshabilitó la transición Source → Build**. No se eliminó, para conservar el historial y la evidencia de la Entrega 2.
+
+```bash
+# Debe mostrar Build con enabled = False
+aws codepipeline get-pipeline-state --region us-east-2 --name blacklist-ci-pipeline \
+  --query 'stageStates[].[stageName,inboundTransitionState.enabled]' --output table
+```
