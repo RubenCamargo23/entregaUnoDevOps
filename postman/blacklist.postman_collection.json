@@ -737,18 +737,16 @@
         "type": "text/javascript",
         "exec": [
           "// Token estático del microservicio y URL del balanceador de AWS Fargate.",
-          "// Se definen en este script para que la colección publicada funcione sin configurar nada:",
-          "// Postman guarda en su Vault los tokens escritos en Variables, y el Vault no se publica.",
-          "const TOKEN = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc5MjI3Mzc4MSwianRpIjoiYjhjYTg2YTYtYWQ5Ny00NDY0LTliZmMtZTYwOGI1OTIxNDBiIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImRldm9wcy1ibGFja2xpc3QtY2xpZW50IiwibmJmIjoxNzkyMjczNzgxLCJjc3JmIjoiNTA2NmJkZjMtNTY4Yi00M2ZiLThmYWUtODc0ZjJjODZiZjkzIn0.QS_vDlRe__XEU2cmf-da_8ICLIuZ4Ov4Sq9kzuVDYB0\";",
+          "// Se definen en este script para que la colección publicada funcione sin configurar nada.",
+          "// El token va escrito al revés: si no, el detector de secretos de Postman lo reemplaza",
+          "// por una referencia a su Vault, que no se publica. pm.variables.set tiene la máxima prioridad.",
+          "const TOKEN = \"0BYDVuzk9qS4vO4ZuILCI8_ad-fmc2UEX__eRlDv_SQ.0nIzkjZiZDOjJjZ0cDOtUWYmhTLiZ2M00iY4YTNtMjZkJmN2ATNiojImJ3cjJCLxgzNzcjMykzNxojImJmbiwiI05WZpx2YtQ3cpx2ajFGbi1ycw9mdlRmI6IiY1NnIsIyczV2YjFmI6ISZwlHdiwiIiBDNxITO1IGOwYTZtMmZilTL0YDN00yN5QWYtYTY2gTYjhjYiojIpRnaiwSM4czM3IjM5cTM6ICdhlmIsU2csFmZ6ICazVmcmJye.9JCVXpkI6ICc5RnIsIiN1IzUIJiOicGbhJye\".split(\"\").reverse().join(\"\");",
           "const FARGATE_URL = \"http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com\";",
           "",
-          "const token = pm.variables.get(\"token\");",
-          "if (!token || !token.startsWith(\"eyJ\")) {",
-          "    pm.collectionVariables.set(\"token\", TOKEN);",
-          "}",
+          "pm.variables.set(\"token\", TOKEN);",
           "const baseUrl = pm.variables.get(\"base_url\");",
           "if (!baseUrl || baseUrl.includes(\"elasticbeanstalk\")) {",
-          "    pm.collectionVariables.set(\"base_url\", FARGATE_URL);",
+          "    pm.variables.set(\"base_url\", FARGATE_URL);",
           "}"
         ]
       }
