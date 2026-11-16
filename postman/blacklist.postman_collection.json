@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Blacklist Microservice - Entrega 1 DevOps",
-    "description": "Microservicio de lista negra global de emails (Flask + PostgreSQL) desplegado en AWS Elastic Beanstalk.\n\nTodos los endpoints `/blacklists` requieren un **Bearer Token** estatico.\n\nLa coleccion ya incluye como **variables de coleccion** la URL del ambiente en AWS (`base_url`), el token (`token`) y un `app_uuid` de ejemplo, por lo que se puede ejecutar directamente sin seleccionar un environment. Si se selecciona un environment, sus valores tienen prioridad.\n\nEjecute la coleccion completa con el Runner de Postman: las peticiones estan ordenadas como escenarios de prueba y cada una tiene tests automaticos.",
+    "name": "Blacklist Microservice - DevOps (Entrega 3)",
+    "description": "Microservicio de lista negra global de emails (Flask + PostgreSQL) desplegado en contenedores sobre AWS Fargate (Amazon ECS), detrás de un Application Load Balancer, con entrega continua blue/green mediante AWS CodePipeline y CodeDeploy.\n\nTodos los endpoints `/blacklists` requieren un **Bearer Token** estatico.\n\nLa coleccion ya incluye como **variables de coleccion** la URL del ambiente en AWS (`base_url`), el token (`token`) y un `app_uuid` de ejemplo, por lo que se puede ejecutar directamente sin seleccionar un environment. Si se selecciona un environment, sus valores tienen prioridad.\n\nEjecute la coleccion completa con el Runner de Postman: las peticiones estan ordenadas como escenarios de prueba y cada una tiene tests automaticos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -29,7 +29,7 @@
             "health"
           ]
         },
-        "description": "Endpoint usado por el balanceador / Elastic Beanstalk para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
+        "description": "Endpoint usado por el balanceador para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
         "auth": {
           "type": "noauth"
         }
@@ -61,7 +61,7 @@
                 "health"
               ]
             },
-            "description": "Endpoint usado por el balanceador / Elastic Beanstalk para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
+            "description": "Endpoint usado por el balanceador para el health check. No requiere token. Retorna la version desplegada, util para validar las estrategias de despliegue.",
             "auth": {
               "type": "noauth"
             }
@@ -733,7 +733,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://blacklist-devops-e1.us-east-2.elasticbeanstalk.com",
+      "value": "http://blacklist-ecs-alb-493993814.us-east-2.elb.amazonaws.com",
       "type": "string"
     },
     {
