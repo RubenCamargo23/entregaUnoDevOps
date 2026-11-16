@@ -112,9 +112,9 @@ aws iam get-role-policy --role-name blacklist-codebuild-role --policy-name black
 
 ## 5. Supuestos y limitaciones
 
-- **El proyecto también lo usa un pipeline.** Antes de esta verificación se creó `blacklist-ci-pipeline` (CodePipeline: GitHub → CodeBuild `blacklist-ci`), que apunta a la rama `apoyo_entrega2`. Por eso la fuente y los artefactos configurados en el proyecto son `AWS CodePipeline`, y no GitHub y S3 directamente. Los builds #1 (Succeeded), #2 (Failed, prueba fallida intencional) y #3 (Succeeded, revert) los lanzó ese pipeline.
+- **El proyecto también lo usa un pipeline.** Antes de esta verificación se creó `blacklist-ci-pipeline` (CodePipeline: GitHub → CodeBuild `blacklist-ci`), que en ese momento se probaba sobre una rama de trabajo, antes de que `main` tuviera `buildspec.yml`. Por eso la fuente y los artefactos configurados en el proyecto son `AWS CodePipeline`, y no GitHub y S3 directamente. Los builds #1 (Succeeded), #2 (Failed, prueba fallida intencional) y #3 (Succeeded, revert) los lanzó ese pipeline.
 - **Por qué el build manual usa overrides.** Cambiar la fuente del proyecto a GitHub habría dejado sin funcionar el pipeline. Los overrides cumplen el criterio (fuente GitHub, artefacto en S3) sin tocar la configuración compartida.
-- **La rama `apoyo_entrega2` se eliminará y no se integrará a `develop`.** Su código (`buildspec.yml`, pruebas, aplicación) es idéntico al de `ft_infra_ci`. Por eso el build manual de evidencia se ejecutó desde `ft_infra_ci`. Antes de borrar esa rama hay que cambiar la rama de origen del pipeline (paso 4 del equipo: pipeline a `main`); si no, el pipeline fallará en la etapa Source.
+- **El build manual de evidencia se ejecutó desde `ft_infra_ci`**, la rama de la tarea, cuyo código (`buildspec.yml`, pruebas, aplicación) es el que se integró a `develop` y luego a `main`. Después, el pipeline se cambió para escuchar la rama `main` (paso 4 del equipo).
 - El build #2 fallido sirve como antecedente de que el pipeline detiene la entrega cuando una prueba falla. La evidencia formal de ejecución exitosa y fallida corresponde al paso 5 del equipo.
 - La infraestructura se creó manualmente; no hay plantilla de IaC en el repositorio.
 
