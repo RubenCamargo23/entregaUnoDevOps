@@ -206,3 +206,5 @@ Al terminar, eliminar los recursos para no generar costos: terminar el ambiente 
 | `ft_estrategias_despliegue` | Integrante 4 – Estrategias de despliegue |
 
 Cada integrante trabaja en su rama `ft_*` y abre un Pull Request hacia `develop`. Cuando todo está integrado y probado en AWS, se hace el PR `develop → main`. Las tareas están en la pestaña **Issues** (milestone *Entrega 1*) y en el tablero Kanban.
+
+Demostración de entrega continua – Entrega 3.
