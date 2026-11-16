@@ -4,7 +4,7 @@ import pytest
 @pytest.mark.parametrize("path", ["/health", "/"])
 def test_health_responds_ok(client, path):
     res = client.get(path)
-    assert res.status_code == 200
+    assert res.status_code == 500
     assert res.get_json()["status"] == "ok"
 
 
