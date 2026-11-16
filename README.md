@@ -143,7 +143,7 @@ La infraestructura de integración continua (bucket de artefactos, proyecto Code
 
 - **Documentación publicada:** https://documenter.getpostman.com/view/43303020/2sBYHaQHxU (apunta al balanceador de AWS Fargate).
 - **Colección:** `postman/blacklist.postman_collection.json`, con 8 escenarios y tests automáticos: health, agregar (201), duplicado (409), datos inválidos (400), sin token (401), consultar email bloqueado y no bloqueado, token inválido (401).
-- La colección del repositorio ya trae `base_url` (balanceador de AWS Fargate), `token` y `app_uuid` como variables de colección, así que **se ejecuta contra AWS sin seleccionar environment**: *Import* del archivo `postman/blacklist.postman_collection.json` → clic derecho en la colección → *Run collection*. La documentación publicada no incluye el token; para ejecutar las pruebas se importa el archivo del repositorio.
+- La colección del repositorio ya trae `base_url` (balanceador de AWS Fargate), `token` y `app_uuid` como variables de colección, así que **se ejecuta contra AWS sin seleccionar environment**: *Import* del archivo `postman/blacklist.postman_collection.json` → clic derecho en la colección → *Run collection*. La documentación publicada se ejecuta igual con *Run in Postman*: un script de la colección define el token y la URL de Fargate.
 - Environments opcionales en `postman/`: `blacklist-aws-SIN-TOKEN` (si Postman bloquea la importación por *Secrets Detected*), `blacklist-aws` y `blacklist-local`, y `blacklist-fargate` (servicio en AWS Fargate, Entrega 3).
 
 Desde la terminal:
